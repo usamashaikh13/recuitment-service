@@ -31,6 +31,7 @@ public class RecruitmentService {
     private final RecruitmentRepository recruitmentRepo;
     private final CandidateRepository candidateRepo;
     private final RestTemplate restTemplate;
+    private final EmailNotificationService emailNotificationService;
 
     @Value("${interviewer.service.url}")
     private String interviewerUrl;
@@ -96,7 +97,26 @@ public class RecruitmentService {
         rec.setInterviewSlotId(selected.getId());
         rec.setRound(req.getRound());
         rec.setStatus(InterviewStatus.SCHEDULED);
-        return recruitmentRepo.save(rec);
+        Recruitment saved = recruitmentRepo.save(rec);
+        
+        // 6. Send email notifications to candidate and interviewer
+        try {
+            emailNotificationService.sendInterviewScheduledNotifications(
+                    cand.getEmail(),
+                    cand.getName(),
+                    "interviewer@xplore.com", // This should be fetched from interviewer service
+                    selected.getInterviewerName(),
+                    selected.getStartTime(),
+                    selected.getDurationMinutes(),
+                    req.getRound()
+            );
+            logger.info("Email notifications sent for recruitment id: {}", saved.getId());
+        } catch (Exception e) {
+            logger.error("Failed to send email notifications: {}", e.getMessage());
+            // Email failure shouldn't break the scheduling
+        }
+        
+        return saved;
     }
 
     private int getInterviewerLoad(Long interviewerId) {

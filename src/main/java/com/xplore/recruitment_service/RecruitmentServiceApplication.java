@@ -6,7 +6,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ComponentScan(basePackages = "com.xplore.recruitment_service")
 public class RecruitmentServiceApplication {
 
 	public static void main(String[] args) {
