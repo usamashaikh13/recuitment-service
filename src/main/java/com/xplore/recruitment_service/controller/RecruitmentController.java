@@ -29,6 +29,13 @@ public class RecruitmentController {
         return recruitmentService.updateStatus(id, status);
     }
 
+    @PutMapping("/{id}/status")
+    public Recruitment replaceStatus(
+            @PathVariable Long id,
+            @RequestParam InterviewStatus status) {
+        return recruitmentService.updateStatus(id, status);
+    }
+
     @GetMapping
     public List<Recruitment> getAll() {
         return recruitmentService.listAllRecruitments();
@@ -42,6 +49,11 @@ public class RecruitmentController {
     @GetMapping("/interviewer/{interviewerId}")
     public List<Recruitment> byInterviewer(@PathVariable Long interviewerId) {
         return recruitmentService.getInterviewsByInterviewerId(interviewerId);
+    }
+
+    @GetMapping("/application/{applicationId}")
+    public List<Recruitment> byApplication(@PathVariable Long applicationId) {
+        return recruitmentService.getInterviewsByApplicationId(applicationId);
     }
 
     @GetMapping("/load/{interviewerId}")

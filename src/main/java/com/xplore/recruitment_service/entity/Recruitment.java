@@ -23,6 +23,9 @@ public class Recruitment {
     @Column(name = "candidate_id", nullable = false)
     private Long candidateId;
 
+    @Column(name = "application_id")
+    private Long applicationId;
+
     @Column(name = "round", nullable = false)
     private String round;
 

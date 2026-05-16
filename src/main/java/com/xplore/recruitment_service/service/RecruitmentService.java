@@ -2,9 +2,12 @@ package com.xplore.recruitment_service.service;
 
 import com.xplore.recruitment_service.dto.InterviewSlotResponse;
 import com.xplore.recruitment_service.dto.ScheduleRequest;
+import com.xplore.recruitment_service.entity.ApplicationStage;
 import com.xplore.recruitment_service.entity.Candidate;
 import com.xplore.recruitment_service.entity.InterviewStatus;
+import com.xplore.recruitment_service.entity.JobApplication;
 import com.xplore.recruitment_service.entity.Recruitment;
+import com.xplore.recruitment_service.repository.JobApplicationRepository;
 import com.xplore.recruitment_service.repository.CandidateRepository;
 import com.xplore.recruitment_service.repository.RecruitmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ public class RecruitmentService {
 
     private final RecruitmentRepository recruitmentRepo;
     private final CandidateRepository candidateRepo;
+    private final JobApplicationRepository applicationRepo;
     private final RestTemplate restTemplate;
     private final EmailNotificationService emailNotificationService;
 
@@ -40,6 +44,15 @@ public class RecruitmentService {
         // 1. Validate candidate
         Candidate cand = candidateRepo.findById(req.getCandidateId())
                 .orElseThrow(() -> new RuntimeException("Candidate not found"));
+
+        JobApplication application = null;
+        if (req.getApplicationId() != null) {
+            application = applicationRepo.findById(req.getApplicationId())
+                    .orElseThrow(() -> new RuntimeException("Application not found"));
+            if (!application.getCandidateId().equals(cand.getId())) {
+                throw new RuntimeException("Application does not belong to the selected candidate");
+            }
+        }
 
         // 2. Fetch all matching slots
         String slotsUrl = String.format(
@@ -93,11 +106,17 @@ public class RecruitmentService {
         // 5. Persist assignment
         Recruitment rec = new Recruitment();
         rec.setCandidateId(cand.getId());
+        rec.setApplicationId(req.getApplicationId());
         rec.setInterviewerId(selected.getInterviewerId());
         rec.setInterviewSlotId(selected.getId());
         rec.setRound(req.getRound());
         rec.setStatus(InterviewStatus.SCHEDULED);
         Recruitment saved = recruitmentRepo.save(rec);
+
+        if (application != null) {
+            application.setStage(ApplicationStage.INTERVIEW_SCHEDULED);
+            applicationRepo.save(application);
+        }
         
         // 6. Send email notifications to candidate and interviewer
         try {
@@ -131,7 +150,14 @@ public class RecruitmentService {
         Recruitment rec = recruitmentRepo.findById(recruitmentId)
                 .orElseThrow(() -> new RuntimeException("Recruitment not found"));
         rec.setStatus(status);
-        return recruitmentRepo.save(rec);
+        Recruitment saved = recruitmentRepo.save(rec);
+        if (rec.getApplicationId() != null && status == InterviewStatus.COMPLETED) {
+            applicationRepo.findById(rec.getApplicationId()).ifPresent(application -> {
+                application.setStage(ApplicationStage.FEEDBACK_PENDING);
+                applicationRepo.save(application);
+            });
+        }
+        return saved;
     }
 
     public List<Recruitment> listAllRecruitments() {
@@ -144,6 +170,10 @@ public class RecruitmentService {
 
     public List<Recruitment> getInterviewsByInterviewerId(Long interviewerId) {
         return recruitmentRepo.findByInterviewerId(interviewerId);
+    }
+
+    public List<Recruitment> getInterviewsByApplicationId(Long applicationId) {
+        return recruitmentRepo.findByApplicationId(applicationId);
     }
 
 }

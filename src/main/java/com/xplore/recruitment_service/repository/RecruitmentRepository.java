@@ -8,4 +8,5 @@ import java.util.List;
 public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> {
     List<Recruitment> findByCandidateId(Long candidateId);
     List<Recruitment> findByInterviewerId(Long interviewerId);
+    List<Recruitment> findByApplicationId(Long applicationId);
 }

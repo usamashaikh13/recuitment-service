@@ -4,6 +4,7 @@ import java.util.Set;
 
 public class ScheduleRequest {
     private Long candidateId;
+    private Long applicationId;
     private Set<String> requiredSkills;
     private int minYearsExperience;
     private String round; // L1 or L2
@@ -11,6 +12,9 @@ public class ScheduleRequest {
     // Getters and setters
     public Long getCandidateId() { return candidateId; }
     public void setCandidateId(Long candidateId) { this.candidateId = candidateId; }
+
+    public Long getApplicationId() { return applicationId; }
+    public void setApplicationId(Long applicationId) { this.applicationId = applicationId; }
 
     public Set<String> getRequiredSkills() { return requiredSkills; }
     public void setRequiredSkills(Set<String> requiredSkills) { this.requiredSkills = requiredSkills; }

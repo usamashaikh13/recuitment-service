@@ -29,6 +29,16 @@ public class CandidateController {
         return candidateService.listAllCandidates();
     }
 
+    @GetMapping("/{id}")
+    public Candidate get(@PathVariable Long id) {
+        return candidateService.getCandidate(id);
+    }
+
+    @PutMapping("/{id}")
+    public Candidate update(@PathVariable Long id, @RequestBody Candidate candidate) {
+        return candidateService.updateCandidate(id, candidate);
+    }
+
     @GetMapping("/test")
     public List<String> test() {
         return List.of("working");
