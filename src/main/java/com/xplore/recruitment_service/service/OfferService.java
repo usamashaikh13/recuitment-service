@@ -17,16 +17,22 @@ public class OfferService {
     private final JobApplicationRepository applicationRepository;
     private final CandidateRepository candidateRepository;
     private final JobOpeningRepository jobOpeningRepository;
+    private final NotificationService notificationService;
+    private final WebhookEventService webhookEventService;
 
     public OfferService(
             OfferRepository offerRepository,
             JobApplicationRepository applicationRepository,
             CandidateRepository candidateRepository,
-            JobOpeningRepository jobOpeningRepository) {
+            JobOpeningRepository jobOpeningRepository,
+            NotificationService notificationService,
+            WebhookEventService webhookEventService) {
         this.offerRepository = offerRepository;
         this.applicationRepository = applicationRepository;
         this.candidateRepository = candidateRepository;
         this.jobOpeningRepository = jobOpeningRepository;
+        this.notificationService = notificationService;
+        this.webhookEventService = webhookEventService;
     }
 
     public Offer create(Offer offer) {
@@ -48,6 +54,7 @@ public class OfferService {
         existing.setSalary(offer.getSalary());
         existing.setCurrency(offer.getCurrency());
         existing.setJoiningDate(offer.getJoiningDate());
+        existing.setExpiresAt(offer.getExpiresAt());
         existing.setStatus(offer.getStatus());
         existing.setNotes(offer.getNotes());
         return offerRepository.save(existing);
@@ -62,11 +69,20 @@ public class OfferService {
                 application.setStage(ApplicationStage.OFFER);
             } else if (status == OfferStatus.ACCEPTED) {
                 application.setStage(ApplicationStage.HIRED);
+                jobOpeningRepository.findById(application.getJobId()).ifPresent(job -> {
+                    int filled = job.getFilledCount() == null ? 0 : job.getFilledCount();
+                    job.setFilledCount(filled + 1);
+                    if (job.getHeadcount() != null && job.getFilledCount() >= job.getHeadcount()) {
+                        job.setStatus(com.xplore.recruitment_service.entity.JobStatus.CLOSED);
+                    }
+                    jobOpeningRepository.save(job);
+                });
             } else if (status == OfferStatus.DECLINED || status == OfferStatus.WITHDRAWN) {
                 application.setStage(ApplicationStage.WITHDRAWN);
             }
             applicationRepository.save(application);
         });
+        webhookEventService.publish("offer." + status.name().toLowerCase(), "offer", saved.getId(), "status=" + status);
         return saved;
     }
 
@@ -86,5 +102,16 @@ public class OfferService {
             return offerRepository.findByStatus(status);
         }
         return offerRepository.findAll();
+    }
+
+    public List<Offer> findExpiredPendingOffers() {
+        List<OfferStatus> pendingStatuses = List.of(
+                OfferStatus.APPROVAL_PENDING,
+                OfferStatus.APPROVED,
+                OfferStatus.SENT
+        );
+        List<Offer> offers = offerRepository.findByStatusInAndExpiresAtBefore(pendingStatuses, java.time.LocalDateTime.now());
+        offers.forEach(notificationService::notifyOfferExpiring);
+        return offers;
     }
 }

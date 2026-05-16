@@ -1,5 +1,6 @@
 package com.xplore.recruitment_service.controller;
 
+import com.xplore.recruitment_service.dto.CandidateTimeline;
 import com.xplore.recruitment_service.entity.Candidate;
 import com.xplore.recruitment_service.service.CandidateService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,18 @@ public class CandidateController {
     @PutMapping("/{id}")
     public Candidate update(@PathVariable Long id, @RequestBody Candidate candidate) {
         return candidateService.updateCandidate(id, candidate);
+    }
+
+    @GetMapping("/duplicates")
+    public List<Candidate> duplicates(
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phone) {
+        return candidateService.findDuplicates(email, phone);
+    }
+
+    @GetMapping("/{id}/timeline")
+    public CandidateTimeline timeline(@PathVariable Long id) {
+        return candidateService.getTimeline(id);
     }
 
     @GetMapping("/test")

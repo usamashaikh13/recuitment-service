@@ -39,6 +39,21 @@ public class JobOpeningController {
         return jobOpeningService.updateStatus(id, status);
     }
 
+    @PatchMapping("/{id}/request-approval")
+    public JobOpening requestApproval(@PathVariable Long id) {
+        return jobOpeningService.requestApproval(id);
+    }
+
+    @PatchMapping("/{id}/approve")
+    public JobOpening approve(@PathVariable Long id, @RequestParam Long approverId) {
+        return jobOpeningService.approve(id, approverId);
+    }
+
+    @PostMapping("/close-expired")
+    public List<JobOpening> closeExpired() {
+        return jobOpeningService.closeExpired();
+    }
+
     @GetMapping("/{id}")
     public JobOpening getById(@PathVariable Long id) {
         return jobOpeningService.getById(id);

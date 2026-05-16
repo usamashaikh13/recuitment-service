@@ -17,11 +17,14 @@ Note: the repository name is currently spelled `recuitment-service`, while the M
 ## Responsibilities
 
 - Create and manage candidate profiles.
+- Detect duplicate candidates and expose full candidate timelines.
 - Create and manage job openings.
+- Support job templates, approval workflow, expiry, and headcount tracking.
 - Track candidates through application pipeline stages.
 - Schedule interviews by calling Interviewer Service for matching slots.
 - Store recruitment/interview assignments.
 - Manage offers and offer status changes.
+- Track analytics and persisted webhook events.
 - Provide dashboard summary metrics for recruiters.
 
 ## Runtime Configuration
@@ -51,6 +54,9 @@ POST /api/candidates
 GET  /api/candidates
 GET  /api/candidates/{id}
 PUT  /api/candidates/{id}
+GET  /api/candidates/duplicates?email=rahul@example.com
+GET  /api/candidates/duplicates?phone=9999999999
+GET  /api/candidates/{id}/timeline
 GET  /api/candidates/test
 ```
 
@@ -65,6 +71,7 @@ Example candidate:
   "currentDesignation": "Software Engineer",
   "yearsExperience": 4.5,
   "skills": ["Java", "Spring Boot", "SQL"],
+  "tags": ["referral", "priority"],
   "resumeUrl": "https://example.com/resume.pdf",
   "portfolioUrl": "https://portfolio.example.com",
   "linkedinUrl": "https://linkedin.com/in/rahul",
@@ -81,6 +88,9 @@ GET   /api/jobs
 GET   /api/jobs/{id}
 PUT   /api/jobs/{id}
 PATCH /api/jobs/{id}/status?status=OPEN
+PATCH /api/jobs/{id}/request-approval
+PATCH /api/jobs/{id}/approve?approverId=2
+POST  /api/jobs/close-expired
 GET   /api/jobs?status=OPEN
 GET   /api/jobs?recruiterId=10
 ```
@@ -88,7 +98,7 @@ GET   /api/jobs?recruiterId=10
 Job statuses:
 
 ```text
-DRAFT, OPEN, PAUSED, CLOSED
+DRAFT, PENDING_APPROVAL, OPEN, PAUSED, CLOSED
 ```
 
 Example job:
@@ -104,11 +114,23 @@ Example job:
   "requiredSkills": ["Java", "Spring Boot", "SQL"],
   "description": "Build backend services for the hiring platform.",
   "salaryRange": "12-18 LPA",
+  "headcount": 2,
+  "expiresAt": "2026-06-30T23:59:00",
   "status": "OPEN",
   "hiringManagerId": 1,
   "recruiterId": 10
 }
 ```
+
+### Job Templates
+
+```http
+POST /api/job-templates
+GET  /api/job-templates
+POST /api/job-templates/{id}/jobs
+```
+
+Templates let recruiters reuse skill, experience, salary, and description defaults for similar openings.
 
 ### Applications
 
@@ -159,6 +181,8 @@ PUT   /api/recruitments/{id}/status?status=COMPLETED
 GET   /api/recruitments/candidate/{candidateId}
 GET   /api/recruitments/interviewer/{interviewerId}
 GET   /api/recruitments/application/{applicationId}
+GET   /api/recruitments/slot/{slotId}
+GET   /api/recruitments/{id}/prep-packet
 GET   /api/recruitments/load/{interviewerId}
 ```
 
@@ -196,6 +220,8 @@ The flow is:
 6. Move the application to `INTERVIEW_SCHEDULED`.
 7. Trigger candidate and interviewer email notifications through Interviewer Service.
 
+The prep packet API returns the recruitment record, candidate profile, application, and job description for interviewer preparation.
+
 ### Offers
 
 ```http
@@ -207,6 +233,7 @@ PATCH /api/offers/{id}/status?status=SENT
 GET   /api/offers?candidateId=1
 GET   /api/offers?applicationId=1
 GET   /api/offers?status=SENT
+GET   /api/offers/expiry-alerts
 ```
 
 Offer statuses:
@@ -226,6 +253,7 @@ Example offer:
   "salary": 1500000,
   "currency": "INR",
   "joiningDate": "2026-06-15",
+  "expiresAt": "2026-06-01T18:00:00",
   "status": "DRAFT",
   "notes": "Standard offer"
 }
@@ -236,6 +264,25 @@ Offer status changes update the application pipeline:
 - `SENT` or `APPROVED` moves the application to `OFFER`.
 - `ACCEPTED` moves the application to `HIRED`.
 - `DECLINED` or `WITHDRAWN` moves the application to `WITHDRAWN`.
+- `ACCEPTED` increments job filled count and closes the job when headcount is reached.
+
+### Analytics
+
+```http
+GET /api/analytics/summary
+GET /api/analytics/funnel
+```
+
+Analytics currently include funnel counts by application stage, average time-to-hire in days, and offer acceptance rate.
+
+### Webhook Events
+
+```http
+GET /api/webhook-events
+GET /api/webhook-events?eventType=interview.scheduled
+```
+
+The service persists internal webhook-style events such as `application.created`, `application.stage_changed`, `interview.scheduled`, `interview.status_changed`, `job.approved`, and `offer.accepted`. These records can later be delivered to external systems.
 
 ### Dashboard
 

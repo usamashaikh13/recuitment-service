@@ -39,6 +39,11 @@ public class Candidate {
     @Column(name = "skill")
     private Set<String> skills;
 
+    @ElementCollection
+    @CollectionTable(name = "candidate_tags", joinColumns = @JoinColumn(name = "candidate_id"))
+    @Column(name = "tag")
+    private Set<String> tags;
+
     @Column(name = "resume_url")
     private String resumeUrl;
 

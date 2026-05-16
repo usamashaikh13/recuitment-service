@@ -1,12 +1,14 @@
 package com.xplore.recruitment_service.service;
 
 import com.xplore.recruitment_service.dto.InterviewSlotResponse;
+import com.xplore.recruitment_service.dto.PrepPacket;
 import com.xplore.recruitment_service.dto.ScheduleRequest;
 import com.xplore.recruitment_service.entity.ApplicationStage;
 import com.xplore.recruitment_service.entity.Candidate;
 import com.xplore.recruitment_service.entity.InterviewStatus;
 import com.xplore.recruitment_service.entity.JobApplication;
 import com.xplore.recruitment_service.entity.Recruitment;
+import com.xplore.recruitment_service.repository.JobOpeningRepository;
 import com.xplore.recruitment_service.repository.JobApplicationRepository;
 import com.xplore.recruitment_service.repository.CandidateRepository;
 import com.xplore.recruitment_service.repository.RecruitmentRepository;
@@ -34,8 +36,10 @@ public class RecruitmentService {
     private final RecruitmentRepository recruitmentRepo;
     private final CandidateRepository candidateRepo;
     private final JobApplicationRepository applicationRepo;
+    private final JobOpeningRepository jobOpeningRepo;
     private final RestTemplate restTemplate;
     private final EmailNotificationService emailNotificationService;
+    private final WebhookEventService webhookEventService;
 
     @Value("${interviewer.service.url}")
     private String interviewerUrl;
@@ -112,6 +116,8 @@ public class RecruitmentService {
         rec.setRound(req.getRound());
         rec.setStatus(InterviewStatus.SCHEDULED);
         Recruitment saved = recruitmentRepo.save(rec);
+        webhookEventService.publish("interview.scheduled", "recruitment", saved.getId(),
+                "candidateId=" + saved.getCandidateId() + ",slotId=" + saved.getInterviewSlotId());
 
         if (application != null) {
             application.setStage(ApplicationStage.INTERVIEW_SCHEDULED);
@@ -151,6 +157,8 @@ public class RecruitmentService {
                 .orElseThrow(() -> new RuntimeException("Recruitment not found"));
         rec.setStatus(status);
         Recruitment saved = recruitmentRepo.save(rec);
+        webhookEventService.publish("interview.status_changed", "recruitment", saved.getId(),
+                "status=" + status);
         if (rec.getApplicationId() != null && status == InterviewStatus.COMPLETED) {
             applicationRepo.findById(rec.getApplicationId()).ifPresent(application -> {
                 application.setStage(ApplicationStage.FEEDBACK_PENDING);
@@ -174,6 +182,25 @@ public class RecruitmentService {
 
     public List<Recruitment> getInterviewsByApplicationId(Long applicationId) {
         return recruitmentRepo.findByApplicationId(applicationId);
+    }
+
+    public List<Recruitment> getInterviewsBySlotId(Long slotId) {
+        return recruitmentRepo.findByInterviewSlotId(slotId);
+    }
+
+    public PrepPacket getPrepPacket(Long recruitmentId) {
+        Recruitment recruitment = recruitmentRepo.findById(recruitmentId)
+                .orElseThrow(() -> new RuntimeException("Recruitment not found"));
+        PrepPacket packet = new PrepPacket();
+        packet.setRecruitment(recruitment);
+        packet.setCandidate(candidateRepo.findById(recruitment.getCandidateId()).orElse(null));
+        if (recruitment.getApplicationId() != null) {
+            applicationRepo.findById(recruitment.getApplicationId()).ifPresent(application -> {
+                packet.setApplication(application);
+                packet.setJob(jobOpeningRepo.findById(application.getJobId()).orElse(null));
+            });
+        }
+        return packet;
     }
 
 }

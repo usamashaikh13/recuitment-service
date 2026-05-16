@@ -60,6 +60,12 @@ public class JobOpening {
     @Column(name = "salary_range")
     private String salaryRange;
 
+    @Column(name = "headcount")
+    private Integer headcount;
+
+    @Column(name = "filled_count")
+    private Integer filledCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private JobStatus status = JobStatus.DRAFT;
@@ -70,6 +76,15 @@ public class JobOpening {
     @Column(name = "recruiter_id")
     private Long recruiterId;
 
+    @Column(name = "approved_by")
+    private Long approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -78,6 +93,9 @@ public class JobOpening {
 
     @PrePersist
     void onCreate() {
+        if (filledCount == null) {
+            filledCount = 0;
+        }
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
     }

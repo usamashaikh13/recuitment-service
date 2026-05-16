@@ -16,14 +16,20 @@ public class JobApplicationService {
     private final JobApplicationRepository applicationRepository;
     private final JobOpeningRepository jobOpeningRepository;
     private final CandidateRepository candidateRepository;
+    private final NotificationService notificationService;
+    private final WebhookEventService webhookEventService;
 
     public JobApplicationService(
             JobApplicationRepository applicationRepository,
             JobOpeningRepository jobOpeningRepository,
-            CandidateRepository candidateRepository) {
+            CandidateRepository candidateRepository,
+            NotificationService notificationService,
+            WebhookEventService webhookEventService) {
         this.applicationRepository = applicationRepository;
         this.jobOpeningRepository = jobOpeningRepository;
         this.candidateRepository = candidateRepository;
+        this.notificationService = notificationService;
+        this.webhookEventService = webhookEventService;
     }
 
     public JobApplication apply(JobApplication application) {
@@ -45,7 +51,10 @@ public class JobApplicationService {
         if (application.getStage() == null) {
             application.setStage(ApplicationStage.APPLIED);
         }
-        return applicationRepository.save(application);
+        JobApplication saved = applicationRepository.save(application);
+        webhookEventService.publish("application.created", "application", saved.getId(),
+                "candidateId=" + saved.getCandidateId() + ",jobId=" + saved.getJobId());
+        return saved;
     }
 
     public JobApplication updateStage(Long id, StageUpdateRequest request) {
@@ -57,7 +66,12 @@ public class JobApplicationService {
         if (request.getRejectionReason() != null) {
             application.setRejectionReason(request.getRejectionReason());
         }
-        return applicationRepository.save(application);
+        JobApplication saved = applicationRepository.save(application);
+        candidateRepository.findById(saved.getCandidateId())
+                .ifPresent(candidate -> notificationService.notifyStageChanged(candidate, saved.getStage()));
+        webhookEventService.publish("application.stage_changed", "application", saved.getId(),
+                "stage=" + saved.getStage());
+        return saved;
     }
 
     public JobApplication getById(Long id) {

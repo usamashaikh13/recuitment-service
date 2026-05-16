@@ -51,4 +51,9 @@ public class OfferController {
             @RequestParam(required = false) OfferStatus status) {
         return offerService.list(candidateId, applicationId, status);
     }
+
+    @GetMapping("/expiry-alerts")
+    public List<Offer> expiryAlerts() {
+        return offerService.findExpiredPendingOffers();
+    }
 }

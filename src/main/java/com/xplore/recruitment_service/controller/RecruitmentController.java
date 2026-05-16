@@ -1,5 +1,6 @@
 package com.xplore.recruitment_service.controller;
 
+import com.xplore.recruitment_service.dto.PrepPacket;
 import com.xplore.recruitment_service.dto.ScheduleRequest;
 import com.xplore.recruitment_service.entity.InterviewStatus;
 import com.xplore.recruitment_service.entity.Recruitment;
@@ -54,6 +55,16 @@ public class RecruitmentController {
     @GetMapping("/application/{applicationId}")
     public List<Recruitment> byApplication(@PathVariable Long applicationId) {
         return recruitmentService.getInterviewsByApplicationId(applicationId);
+    }
+
+    @GetMapping("/slot/{slotId}")
+    public List<Recruitment> bySlot(@PathVariable Long slotId) {
+        return recruitmentService.getInterviewsBySlotId(slotId);
+    }
+
+    @GetMapping("/{id}/prep-packet")
+    public PrepPacket prepPacket(@PathVariable Long id) {
+        return recruitmentService.getPrepPacket(id);
     }
 
     @GetMapping("/load/{interviewerId}")

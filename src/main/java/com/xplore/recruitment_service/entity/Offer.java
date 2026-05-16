@@ -50,6 +50,9 @@ public class Offer {
     @Column(name = "joining_date")
     private LocalDate joiningDate;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private OfferStatus status = OfferStatus.DRAFT;
